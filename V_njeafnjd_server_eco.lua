@@ -16,7 +16,7 @@ end
 local RE1 = GetOrCreateRE("RemoteEvent") -- Для чата
 local RE2 = GetOrCreateRE("RemoteEvent2") -- Для рассылки кода
 
-local GITHUB_CLIENT_URL = "https://githubusercontent.com"
+local GITHUB_CLIENT_URL = "https://raw.githubusercontent.com/serezanet2/Roblox/refs/heads/main/V_njeafnjd_client_eco.lua"
 
 -- 2. Полная логика Чат-Сервера (100+ строк расчетов)
 local function StartServer()
