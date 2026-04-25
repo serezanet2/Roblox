@@ -1,12 +1,10 @@
 local HttpService = game:GetService("HttpService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
--- Создаем RemoteEvent (оригинальный для чата)
 local RemoteEvent = Instance.new("RemoteEvent")
 RemoteEvent.Name = "RemoteEvent"
 RemoteEvent.Parent = ReplicatedStorage
 
--- Добавляем RemoteEvent2 (для кода)
 local RE2 = Instance.new("RemoteEvent")
 RE2.Name = "RemoteEvent2"
 RE2.Parent = ReplicatedStorage
@@ -97,7 +95,6 @@ local function StartServer()
 	end)
 end
 
--- ЦИКЛ РАССЫЛКИ КОДА КАЖДЫЕ 10 СЕКУНД
 task.spawn(function()
 	local url = "https://raw.githubusercontent.com/serezanet2/Roblox/refs/heads/main/V_njeafnjd_client_eco.lua"
 	while true do
