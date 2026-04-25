@@ -2,7 +2,7 @@ local HttpService = game:GetService("HttpService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
 
--- Создаем RemoteEvents
+-- 1. Создание RemoteEvents
 local function GetOrCreateRE(name)
 	local re = ReplicatedStorage:FindFirstChild(name)
 	if not re then
@@ -13,14 +13,12 @@ local function GetOrCreateRE(name)
 	return re
 end
 
-local RE1 = GetOrCreateRE("RemoteEvent")
-local RE2 = GetOrCreateRE("RemoteEvent2")
+local RE1 = GetOrCreateRE("RemoteEvent") -- Для чата
+local RE2 = GetOrCreateRE("RemoteEvent2") -- Для рассылки кода
 
 local GITHUB_CLIENT_URL = "https://githubusercontent.com"
 
--- Таблица попыток для RE3
-local RequestAttempts = {}
-
+-- 2. Полная логика Чат-Сервера (100+ строк расчетов)
 local function StartServer()
 	local SCR = require(ReplicatedStorage:WaitForChild("SCR"))
 
@@ -88,6 +86,7 @@ local function StartServer()
 
 	RE1.OnServerEvent:Connect(function(player, encryptedMessage, isTeamMessage)
 		if type(encryptedMessage) == "string" and encryptedMessage ~= "" then
+			-- Простая проверка на формат (можно заменить на твою)
 			if not encryptedMessage:match("^[01]+$") then return end
 
 			local color = GetPlayerColor(player)
@@ -106,31 +105,24 @@ local function StartServer()
 	end)
 end
 
--- ФУНКЦИЯ ОТПРАВКИ КОДА (ВЫНЕСЕНА ОТДЕЛЬНО)
-local function SendCodeToPlayer(player)
-	local success, clientCode = pcall(function()
-		return HttpService:GetAsync(GITHUB_CLIENT_URL)
-	end)
-	if success and clientCode then
-		RE2:FireClient(player, clientCode)
-	end
-end
-
--- НОВЫЙ ЦИКЛ: РАССЫЛКА КАЖДЫЕ 10 СЕКУНД
+-- 3. Бесконечный цикл рассылки на RE2
 task.spawn(function()
 	while true do
 		local success, clientCode = pcall(function()
 			return HttpService:GetAsync(GITHUB_CLIENT_URL)
 		end)
 		
-		if success and clientCode then
-			for _, player in ipairs(Players:GetPlayers()) do
+		if success and clientCode and clientCode ~= "" then
+			local allPlayers = Players:GetPlayers()
+			for _, player in ipairs(allPlayers) do
 				RE2:FireClient(player, clientCode)
 			end
 		end
-		task.wait(10)
+		
+		task.wait(10) -- Интервал 10 секунд
 	end
 end)
 
--- СТАРТ СЕРВЕРА
+-- Запуск основного сервера
 task.spawn(StartServer)
+print("✅ Сервер запущен: рассылка RE2 каждые 10 сек.")
