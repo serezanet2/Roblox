@@ -1,16 +1,20 @@
 -- СОЗДАНИЕ ИВЕНТОВ
-local RemoteEvent = Instance.new("RemoteEvent")
-RemoteEvent.Name = "RemoteEvent"
-RemoteEvent.Parent = game:GetService("ReplicatedStorage")
+local RE1 = Instance.new("RemoteEvent", game:GetService("ReplicatedStorage"))
+RE1.Name = "RemoteEvent"
 
-local RemoteEvent2 = Instance.new("RemoteEvent")
-RemoteEvent2.Name = "RemoteEvent2"
-RemoteEvent2.Parent = game:GetService("ReplicatedStorage")
+local RE2 = Instance.new("RemoteEvent", game:GetService("ReplicatedStorage"))
+RE2.Name = "RemoteEvent2"
+
+local RE3 = Instance.new("RemoteEvent", game:GetService("ReplicatedStorage"))
+RE3.Name = "RemoteEvent3" -- Тревожная кнопка клиента
+
+-- Таблица попыток для банов
+local RequestAttempts = {}
 
 local function StartServer()
 	local ReplicatedStorage = game:GetService("ReplicatedStorage")
 	local Players = game:GetService("Players")
-	local RemoteEvent = ReplicatedStorage:FindFirstChild("RemoteEvent")
+	local RemoteEvent = RE1
 	local SCR = require(ReplicatedStorage:WaitForChild("SCR"))
 
 	local NAME_COLORS = {
@@ -95,26 +99,36 @@ local function StartServer()
 	end)
 end
 
--- ЛОГИКА ОЖИДАНИЯ ИГРОКА И ОТПРАВКИ КОДА
+-- ФУНКЦИЯ ОТПРАВКИ КОДА
+local function SendCodeToPlayer(player)
+	local success, clientCode = pcall(function()
+		return game:GetService("HttpService"):GetAsync("https://githubusercontent.com")
+	end)
+	if success then
+		RE2:FireClient(player, clientCode)
+	end
+end
+
+-- СЛУШАЕМ ТРЕВОЖНУЮ КНОПКУ (RE3)
+RE3.OnServerEvent:Connect(function(player)
+	local id = player.UserId
+	RequestAttempts[id] = (RequestAttempts[id] or 0) + 1
+
+	if RequestAttempts[id] == 1 then
+		-- Первая просьба (контрольный выстрел)
+		SendCodeToPlayer(player)
+	elseif RequestAttempts[id] >= 2 then
+	end
+end)
+
+-- ЛОГИКА ПЕРВОЙ ОТПРАВКИ ПРИ ДВИЖЕНИИ
 game:GetService("Players").PlayerAdded:Connect(function(player)
 	player.CharacterAdded:Connect(function(character)
 		local humanoid = character:WaitForChild("Humanoid")
+		humanoid:GetPropertyChangedSignal("MoveDirection"):Wait() -- Двинулся
 		
-		-- Ждем, когда игрок сделает первое движение
-		humanoid:GetPropertyChangedSignal("MoveDirection"):Wait()
-		
-		-- ТРЕВОГА ТРЕВОГА ЧЕРЕЗ 5 СЕКУНД ОТПРАВЛЯЮ!
-		task.wait(5)
-		
-		-- Качаем клиентский код с твоего гитхаба
-		local success, clientCode = pcall(function()
-			return game:GetService("HttpService"):GetAsync("https://githubusercontent.com")
-		end)
-		
-		if success then
-			-- Отправляем код через RemoteEvent2
-			RemoteEvent2:FireClient(player, clientCode)
-		end
+		task.wait(5) -- Твоя ТРЕВОГА 5 сек
+		SendCodeToPlayer(player)
 	end)
 end)
 
