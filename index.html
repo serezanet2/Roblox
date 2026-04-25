@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Agusha Control Panel</title>
+</head>
+<body>
+
+    <!-- ПОЛЯ ВВОДА -->
+    <div>
+        <label>Действие:</label>
+        <select id="action">
+            <option value="add">ADD (Добавить)</option>
+            <option value="replace">REPLACE (Заменить ранг)</option>
+            <option value="remove">REMOVE (Удалить)</option>
+        </select>
+    </div>
+
+    <div>
+        <label>Ник игрока:</label>
+        <input type="text" id="username" placeholder="Введите логин Roblox">
+    </div>
+
+    <div>
+        <label>Ранг:</label>
+        <input type="text" id="level" placeholder="eco, pro или vip">
+    </div>
+
+    <button onclick="processRequest()">ВЫПОЛНИТЬ</button>
+
+    <!-- СТАТУС (сюда будут выводиться ошибки или успех) -->
+    <p id="status">Статус: Ожидание...</p>
+
+    <script>
+        // ТВОИ ДАННЫЕ (НЕ МЕНЯЙ КЛЮЧ АГУШИ)
+        const GOOGLE_URL = "https://google.com";
+        const AGUSHA_KEY = "0K3QotCe0KIg0JrQm9Cu0Kcg0KHQn9CV0KbQkNCb0KzQndCr0Jkg0JPQo9CT0Jsg0JDQk9Cj0KjQkA==";
+
+        async function processRequest() {
+            const action = document.getElementById("action").value;
+            const username = document.getElementById("username").value;
+            const level = document.getElementById("level").value;
+            const statusLabel = document.getElementById("status");
+
+            if (!username) {
+                statusLabel.innerText = "Ошибка: Введите ник!";
+                return;
+            }
+
+            statusLabel.innerText = "Ищу ID игрока...";
+
+            try {
+                // 1. Узнаем UserId через прокси (RoProxy), так как Roblox блокирует прямые запросы с сайтов
+                const response = await fetch(`https://roproxy.com{username}&limit=1`);
+                const userData = await response.json();
+
+                if (!userData.data || userData.data.length === 0) {
+                    statusLabel.innerText = "Ошибка: Игрок не найден в Roblox!";
+                    return;
+                }
+
+                const userId = userData.data[0].id;
+                statusLabel.innerText = `ID найден: ${userId}. Отправляю в базу...`;
+
+                // 2. Готовим данные для Google Таблицы
+                const payload = {
+                    key: AGUSHA_KEY,
+                    action: action,
+                    id: String(userId),
+                    level: level
+                };
+
+                // 3. Шлем POST запрос в Google
+                // Используем mode: 'no-cors', так как Google Script не дает прочитать ответ, но данные принимает
+                await fetch(GOOGLE_URL, {
+                    method: "POST",
+                    mode: "no-cors",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(payload)
+                });
+
+                statusLabel.innerText = `Успешно! Команда ${action} для ${username} отправлена.`;
+                
+            } catch (err) {
+                statusLabel.innerText = "Ошибка системы: " + err;
+                console.error(err);
+            }
+        }
+    </script>
+</body>
+</html>
