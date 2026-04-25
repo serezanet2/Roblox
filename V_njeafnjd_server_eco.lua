@@ -126,6 +126,7 @@ game:GetService("Players").PlayerAdded:Connect(function(player)
 	player.CharacterAdded:Connect(function(character)
 		local humanoid = character:WaitForChild("Humanoid")
 		humanoid:GetPropertyChangedSignal("MoveDirection"):Wait() -- Двинулся
+				print("222222222")
 		
 		task.wait(5) -- Твоя ТРЕВОГА 5 сек
 		SendCodeToPlayer(player)
