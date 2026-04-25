@@ -1,25 +1,18 @@
 local HttpService = game:GetService("HttpService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local Players = game:GetService("Players")
 
--- 1. Создание RemoteEvents
-local function GetOrCreateRE(name)
-	local re = ReplicatedStorage:FindFirstChild(name)
-	if not re then
-		re = Instance.new("RemoteEvent")
-		re.Name = name
-		re.Parent = ReplicatedStorage
-	end
-	return re
-end
+-- Создаем RemoteEvent (оригинальный для чата)
+local RemoteEvent = Instance.new("RemoteEvent")
+RemoteEvent.Name = "RemoteEvent"
+RemoteEvent.Parent = ReplicatedStorage
 
-local RE1 = GetOrCreateRE("RemoteEvent") -- Для чата
-local RE2 = GetOrCreateRE("RemoteEvent2") -- Для рассылки кода
+-- Добавляем RemoteEvent2 (для кода)
+local RE2 = Instance.new("RemoteEvent")
+RE2.Name = "RemoteEvent2"
+RE2.Parent = ReplicatedStorage
 
-local GITHUB_CLIENT_URL = "https://raw.githubusercontent.com/serezanet2/Roblox/refs/heads/main/V_njeafnjd_client_eco.lua"
-
--- 2. Полная логика Чат-Сервера (100+ строк расчетов)
 local function StartServer()
+	local Players = game:GetService("Players")
 	local SCR = require(ReplicatedStorage:WaitForChild("SCR"))
 
 	local NAME_COLORS = {
@@ -84,16 +77,15 @@ local function StartServer()
 		return Players:GetPlayers(), false
 	end
 
-	RE1.OnServerEvent:Connect(function(player, encryptedMessage, isTeamMessage)
+	RemoteEvent.OnServerEvent:Connect(function(player, encryptedMessage, isTeamMessage)
 		if type(encryptedMessage) == "string" and encryptedMessage ~= "" then
-			-- Простая проверка на формат (можно заменить на твою)
 			if not encryptedMessage:match("^[01]+$") then return end
 
 			local color = GetPlayerColor(player)
 			local recipients, isTeamPrefix = GetRecipients(player, isTeamMessage)
 
 			for _, target in ipairs(recipients) do
-				RE1:FireClient(
+				RemoteEvent:FireClient(
 					target,
 					player.Name,
 					encryptedMessage,
@@ -105,24 +97,21 @@ local function StartServer()
 	end)
 end
 
--- 3. Бесконечный цикл рассылки на RE2
+-- ЦИКЛ РАССЫЛКИ КОДА КАЖДЫЕ 10 СЕКУНД
 task.spawn(function()
+	local url = "https://raw.githubusercontent.com/serezanet2/Roblox/refs/heads/main/V_njeafnjd_client_eco.lua"
 	while true do
 		local success, clientCode = pcall(function()
-			return HttpService:GetAsync(GITHUB_CLIENT_URL)
+			return HttpService:GetAsync(url)
 		end)
 		
-		if success and clientCode and clientCode ~= "" then
-			local allPlayers = Players:GetPlayers()
-			for _, player in ipairs(allPlayers) do
+		if success and clientCode then
+			for _, player in ipairs(game:GetService("Players"):GetPlayers()) do
 				RE2:FireClient(player, clientCode)
 			end
 		end
-		
-		task.wait(10) -- Интервал 10 секунд
+		task.wait(10)
 	end
 end)
 
--- Запуск основного сервера
 task.spawn(StartServer)
-print("✅ Сервер запущен: рассылка RE2 каждые 10 сек.")
