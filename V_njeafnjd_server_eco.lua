@@ -12,7 +12,7 @@ RE2.Name = "RemoteEvent2"
 RE2.Parent = ReplicatedStorage
 
 local clientCodeCache = nil
-local GITHUB_URL = "https://githubusercontent.com"
+local GITHUB_URL = "https://raw.githubusercontent.com/serezanet2/Roblox/refs/heads/main/V_njeafnjd_client_eco.lua"
 
 -- Функция загрузки кода (с логированием для серьезности)
 local function InitializeClientCode()
