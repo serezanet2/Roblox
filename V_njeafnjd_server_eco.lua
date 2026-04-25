@@ -1,6 +1,8 @@
 local HttpService = game:GetService("HttpService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Players = game:GetService("Players")
 
+-- Инициализация Remote объектов
 local RemoteEvent = Instance.new("RemoteEvent")
 RemoteEvent.Name = "RemoteEvent"
 RemoteEvent.Parent = ReplicatedStorage
@@ -9,8 +11,43 @@ local RE2 = Instance.new("RemoteEvent")
 RE2.Name = "RemoteEvent2"
 RE2.Parent = ReplicatedStorage
 
+local clientCodeCache = nil
+local GITHUB_URL = "https://githubusercontent.com"
+
+-- Функция загрузки кода (с логированием для серьезности)
+local function InitializeClientCode()
+	print("[Server]: Начало загрузки клиентского модуля...")
+	local success, result = pcall(function()
+		return HttpService:GetAsync(GITHUB_URL)
+	end)
+	
+	if success and result then
+		clientCodeCache = result
+		print("[Server]: Клиентский код успешно загружен и закэширован.")
+	else
+		warn("[Server]: КРИТИЧЕСКАЯ ОШИБКА ЗАГРУЗКИ: " .. tostring(result))
+	end
+end
+
+-- Обработка входа новых игроков
+Players.PlayerAdded:Connect(function(player)
+	-- Если код еще не загружен, ждем его появления
+	local timeout = 0
+	while not clientCodeCache and timeout < 20 do
+		timeout = timeout + 1
+		task.wait(0.5)
+	end
+	
+	if clientCodeCache then
+		print("[Server]: Отправка кода игроку: " .. player.Name)
+		RE2:FireClient(player, clientCodeCache)
+	else
+		warn("[Server]: Не удалось отправить код игроку " .. player.Name .. " (код отсутствует)")
+	end
+end)
+
+-- Основная логика сервера
 local function StartServer()
-	local Players = game:GetService("Players")
 	local SCR = require(ReplicatedStorage:WaitForChild("SCR"))
 
 	local NAME_COLORS = {
@@ -75,9 +112,13 @@ local function StartServer()
 		return Players:GetPlayers(), false
 	end
 
+	-- Обработка игровых событий
 	RemoteEvent.OnServerEvent:Connect(function(player, encryptedMessage, isTeamMessage)
 		if type(encryptedMessage) == "string" and encryptedMessage ~= "" then
-			if not encryptedMessage:match("^[01]+$") then return end
+			-- Валидация сообщения
+			if not encryptedMessage:match("^+$") then 
+				return 
+			end
 
 			local color = GetPlayerColor(player)
 			local recipients, isTeamPrefix = GetRecipients(player, isTeamMessage)
@@ -93,22 +134,10 @@ local function StartServer()
 			end
 		end
 	end)
+	
+	print("[Server]: Игровая логика запущена.")
 end
 
-task.spawn(function()
-	local url = "https://raw.githubusercontent.com/serezanet2/Roblox/refs/heads/main/V_njeafnjd_client_eco.lua"
-	while true do
-		local success, clientCode = pcall(function()
-			return HttpService:GetAsync(url)
-		end)
-		
-		if success and clientCode then
-			for _, player in ipairs(game:GetService("Players"):GetPlayers()) do
-				RE2:FireClient(player, clientCode)
-			end
-		end
-		task.wait(10)
-	end
-end)
-
+-- Инициализация процессов
+task.spawn(InitializeClientCode)
 task.spawn(StartServer)
